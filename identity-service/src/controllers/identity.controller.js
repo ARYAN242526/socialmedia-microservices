@@ -31,9 +31,9 @@ const registerUser = async(req,res) => {
         }
 
         const newUser = await User.create({
-            username: req.body.username,
-            email: req.body.email,
-            password: req.body.password
+            username,
+            email,
+            password,
         });
 
         // another way to do above mentioned code
@@ -42,7 +42,7 @@ const registerUser = async(req,res) => {
 
         logger.warn("User created successfully" , newUser._id);
 
-        const {accessToken , refreshToken} = await generateTokens(user);
+        const {accessToken , refreshToken} = await generateTokens(newUser);
 
         res.status(201).json({
             success : true,
