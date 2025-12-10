@@ -45,7 +45,7 @@ app.use((req,res,next) => {
 
 const proxyOptions = {
     proxyReqPathResolver : (req) => {
-        req.originalUrl.replace(/^\/v1/, '/api');
+        return req.originalUrl.replace(/^\/v1/, "/api");
     },
     proxyErrorHandler : (err , res , next) => {
         logger.error(`Proxy error: ${err.message}`);
@@ -53,12 +53,12 @@ const proxyOptions = {
             message : 'Internal server error' ,
             error : err.message
         });
-    }
-}
+    },
+};
 
 // setting up proxy for our identity service
 app.use(
-    '/v1',
+    '/v1/auth',
     proxy(process.env.IDENTITY_SERVICE_URL , {
     ...proxyOptions,
     proxyReqOptDecorator : (proxyReqOpts , srcReq) => {
