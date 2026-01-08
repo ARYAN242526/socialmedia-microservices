@@ -35,3 +35,13 @@ app.use('/api/posts' , (req,res,next) => {
 } , postRoutes);
 
 app.use(errorHandler);
+
+app.listen(PORT , () => {
+    logger.info(`Post service is running on : ${PORT}`);
+});
+
+// unhandled promise rejection
+process.on('unhandledRejection' , (reason , promise) => {
+    logger.error("Unhandled Rejection at" , promise , "reason:" , reason);
+});
+
