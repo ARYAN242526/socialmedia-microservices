@@ -46,7 +46,9 @@ app.use((req,res,next) => {
 
 const proxyOptions = {
     proxyReqPathResolver : (req) => {
-        return req.originalUrl.replace(/^\/v1/, "/api");
+       const newPath = req.originalUrl.replace(/^\/v1/ , "/api");
+       logger.info(`Proxing to path : ${newPath}`)
+       return newPath;
     },
     proxyErrorHandler : (err , res , next) => {
         logger.error(`Proxy error: ${err.message}`);
