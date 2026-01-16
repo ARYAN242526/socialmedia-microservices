@@ -2,6 +2,16 @@ import logger from "../utils/logger.js";
 import { Post } from "../models/post.model.js";
 import { validateCreatePost } from "../utils/validation.js";
 
+async function invalidatePostCache(req,input) {
+    const cachedKey = `post:${input}`;
+    await req.redisClient.del(cachedKey);
+
+    
+    const keys = await req.redisClient.keys("posts:*");
+    if(keys.length > 0){
+        await req.redisClient.del(keys);
+    }
+}
 
 const createPost = async(req,res) => {
     logger.info("Create post endpoint hit...");
@@ -24,7 +34,7 @@ const createPost = async(req,res) => {
         });
 
         await newPost.save();
-
+        await invalidatePostCache(req, newPost._id.toString())
         logger.info("Post created successfully" , newPost);
         return res.status(201).json({
             success : true,
@@ -42,7 +52,35 @@ const createPost = async(req,res) => {
 
 const getAllPosts = async(req,res) => {
     try {
-        logger.info("Get all posts endpoint hit...");
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const startIndex = (page - 1) * limit;
+
+        const cacheKey = `posts:${page}:${limit}`;
+        const cachedPosts = await req.redisClient.get(cacheKey);
+
+        if(cachedPosts){
+            return res.json(JSON.parse(cachedPosts));
+        }
+
+        const posts = await Post.find({})
+            .sort({ createdAt : -1 })
+            .skip(startIndex)
+            .limit(limit);
+
+        const totalNoOfPosts = await Post.countDocuments();
+
+        const result = {
+            posts,
+            currentPage : page,
+            totalPages : Math.ceil(totalNoOfPosts / limit),
+            totalPosts : totalNoOfPosts,
+        } 
+
+        // save posts in redis cache
+        await req.redisClient.setex(cacheKey , 300 , JSON.stringify(result))
+
+        res.status(201).json(result);
         
     } catch (e) {
         logger.error("Error while fetching posts" , e);
@@ -55,8 +93,27 @@ const getAllPosts = async(req,res) => {
 
 const getPost = async(req,res) => {
     try {
-        logger.info("Create post endpoint hit");
+       const postId = req.params.id;
+       const cacheKey = `post:${postId}`;
+       const cachedPost = await req.redisClient.get(cacheKey)
         
+       if(cachedPost) {
+        return res.json(JSON.parse(cachedPost));
+       }
+
+       const singlePostDetailsById = await Post.findById(postId);
+
+       if(!singlePostDetailsById){
+        return res.status(400).json({
+            success: false,
+            message : "Post not found"
+        })
+       }
+
+       await req.redisClient.setex(cachedPost , 3600 , JSON.stringify(singlePostDetailsById));
+
+       res.json(singlePostDetailsById);
+
     } catch (e) {
         logger.error("Error fetching post" , e);
         res.status(500).json({
@@ -68,7 +125,22 @@ const getPost = async(req,res) => {
 
 const deletePost = async(req,res) => {
     try {
-        logger.info("Delete post endpoint hit...");
+        const post = await Post.findByIdAndDelete({
+            _id : req.params.id,
+            userId : req.user.userId,
+        });
+
+        if(!post) {
+            return res.status(404).json({
+                success : false,
+                message : "Post not found",
+            });
+        }
+
+        await invalidatePostCache(req , req.params.id);
+        res.json({
+            message : "Post deleted successfully",
+        });
         
     } catch (e) {
         logger.error("Error while deleting post" , e);
