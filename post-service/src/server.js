@@ -7,6 +7,7 @@ import postRoutes from './routes/post.routes.js';
 import errorHandler from './middleware/errorHandler.middleware.js';
 import logger from './utils/logger.js';
 import connectToDB from './db/index.js';
+import { connectToRabbitMQ } from './utils/rabbitmq.js';
 
 
 dotenv.config();
@@ -36,9 +37,19 @@ app.use('/api/posts' , (req,res,next) => {
 
 app.use(errorHandler);
 
-app.listen(PORT , () => {
-    logger.info(`Post service is running on : ${PORT}`);
-});
+async function startServer(){
+    try {
+        await connectToRabbitMQ();
+        app.listen(PORT , () => {
+            logger.info(`Post service is running on : ${PORT}`);
+        });
+    } catch (error) {
+        logger.error('Failed to connect to server' , error);
+        process.exit(1);
+    }
+}
+
+startServer()
 
 // unhandled promise rejection
 process.on('unhandledRejection' , (reason , promise) => {

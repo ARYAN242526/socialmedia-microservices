@@ -5,7 +5,7 @@ import { uploadToCloudinary } from "../utils/cloudinary.js";
 const uploadMedia = async(req , res) => {
     logger.info('Starting media upload');
     try {
-        console.log(req.file , "req.filereq.file");
+        // console.log(req.file , "req.filereq.file");
         
         if(!req.file){
             logger.error("No file found! Please add a file and try again");
