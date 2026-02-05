@@ -3,12 +3,12 @@ import dotenv from 'dotenv';
 import Redis from 'ioredis';
 import cors from 'cors';
 import helmet from 'helmet';
-
 import errorHandler from './middleware/errorHandler.middleware.js';
 import logger from './utils/logger.js';
 import connectToDB from './db/index.js';
-import { connectToRabbitMQ } from './utils/rabbitmq.js';
-
+import { connectToRabbitMQ , consumeEvent } from './utils/rabbitmq.js';
+import serachRoutes from './routes/search.routes.js';
+import { handlePostCreated } from './eventHandlers/search.eventHandler.js';
 
 dotenv.config();
 const app = express();
@@ -28,3 +28,21 @@ app.use((req,res,next) => {
     logger.info(`Request body , ${req.body}`);
     next();
 });
+
+app.use('/api/search' , serachRoutes);
+
+app.use(errorHandler);
+
+async function startServer() {
+    try {
+        await connectToRabbitMQ();
+
+        // consume the events / subscribe to the events
+        await consumeEvent("post.created" , handlePostCreated);
+    } catch (e) {
+        logger.error("Failed to start search service" , e);
+        process.exit(1);
+    }
+}
+
+startServer();
