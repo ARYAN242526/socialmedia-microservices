@@ -29,7 +29,7 @@ app.use((req,res,next) => {
     next();
 });
 
-app.use('/api/search' , serachRoutes);
+app.use('/api/search', serachRoutes);
 
 app.use(errorHandler);
 
