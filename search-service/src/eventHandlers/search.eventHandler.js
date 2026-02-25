@@ -19,4 +19,15 @@ async function handlePostCreated(event) {
     }
 }
 
-export {handlePostCreated}
+async function handlePostDeleted(event) {
+    try {
+
+        await Search.findOneAndDelete({postId : event.postId});
+
+        logger.info(`Search post deleted: ${event.postId}`)
+        
+    } catch (error) {
+        logger.error("Error handling post deletion event" , error);
+    }
+}
+export {handlePostCreated, handlePostDeleted}
